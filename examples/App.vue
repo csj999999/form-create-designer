@@ -1,6 +1,6 @@
 <template>
     <div id="app">
-        <div class="_fc-t-header">
+        <!-- <div class="_fc-t-header">
             <img class="_fc-t-logo" src="http://form-create.com/logo.png">
             <div class="_fc-t-name">form-create-designer</div>
             <div class="_fc-t-menu">
@@ -10,10 +10,10 @@
                 <el-button size="mini" type="success" @click="showOption">生成Options</el-button>
                 <el-button size="mini" type="danger" @click="showTemplate">生成组件</el-button>
             </div>
-        </div>
+        </div> -->
         <fc-designer ref="designer"/>
 
-        <ElFooter class="_fc-copyright" height="30px">
+        <!-- <ElFooter class="_fc-copyright" height="30px">
           <div class="_fc-b-item">
             <el-popover
                 placement="top"
@@ -29,7 +29,7 @@
           <div class="_fc-b-item">
             <a href='https://gitee.com/xaboy/form-create-designer/stargazers' style="display: inline-flex;"><img src='https://gitee.com/xaboy/form-create-designer/badge/star.svg?theme=dark' alt='gitee'/></a>
           </div>
-        </ElFooter>
+        </ElFooter> -->
 
         <el-dialog :title="title[type]" :visible.sync="state" class="_fc-t-dialog">
             <div ref="editor" v-if="state"></div>
@@ -75,6 +75,8 @@ export default {
             editor: null,
             err: false,
             type: -1,
+            detailData: [],
+            detailForm: {}
         };
     },
     watch: {
@@ -87,6 +89,29 @@ export default {
         value() {
             this.load();
         }
+    },
+    mounted() {
+        window.addEventListener('message',  (e) => {
+            if (e.data.type === 8) {
+                // console.log('this.value', this.value, this.$refs)
+                this.showJson();
+            } else {
+                // console.log('e.data', e.data);
+                if(e.data.data) {
+                    this.detailData = e.data.data;
+                } else {
+                    this.detailData = [];
+                }
+                if(e.data.data) {
+                    this.detailForm = e.data.formsetting || {};
+                    this.$nextTick(() => {
+                        this.onOk();
+                    });
+                } else {
+                    this.detailForm = {};
+                }
+            }
+        },false);
     },
     methods: {
         load() {
@@ -112,13 +137,18 @@ export default {
                 this.editor.on('blur', () => {
                     this.err = this.editor.state.lint.marked.length > 0;
                 });
+                var newList = {};
+                newList.data = JSON.parse(val);
+                newList.type = 8;
+                newList.formsetting = this.$refs.designer.getOption();
+                window.parent.postMessage(newList, '*');
             });
         },
         onValidationError(e) {
             this.err = e.length !== 0;
         },
         showJson() {
-            this.state = true;
+            this.state = false;
             this.type = 0;
             this.value = this.$refs.designer.getRule();
         },
@@ -144,21 +174,39 @@ export default {
         },
         onOk() {
             if (this.err) return;
-            const json = this.editor.getValue();
-            let val = JSON.parse(json);
-            if (this.type === 3) {
-                if (!Array.isArray(val)) {
+            if(this.detailData.length > 0) {
+                const data = JSON.parse(this.detailData);
+                console.log('JSON.parse(this.detailData)', data);
+                if (!Array.isArray(data)) {
                     this.err = true;
                     return;
                 }
-                this.$refs.designer.setRule(formCreate.parseJson(json));
-            } else {
-                if (!is.Object(val) || !val.form) {
-                    this.err = true;
-                    return;
-                }
-                this.$refs.designer.setOption(val);
+                this.$refs.designer.setRule(formCreate.parseJson(this.detailData));
             }
+            if(this.detailForm != {}) {
+                const formsetting = JSON.parse(this.detailForm);
+                console.log('JSON.parse(this.formsetting)', formsetting);
+                if (!is.Object(formsetting) || !formsetting.form) {
+                    this.err = true;
+                    return;
+                }
+                this.$refs.designer.setOption(formsetting);
+            }
+            // const json = this.editor.getValue();
+            // let val = JSON.parse(json);
+            // if (this.type === 3) {
+            //     if (!Array.isArray(val)) {
+            //         this.err = true;
+            //         return;
+            //     }
+            //     this.$refs.designer.setRule(formCreate.parseJson(json));
+            // } else {
+            //     if (!is.Object(val) || !val.form) {
+            //         this.err = true;
+            //         return;
+            //     }
+            //     this.$refs.designer.setOption(val);
+            // }
             this.state = false;
         },
         makeTemplate() {
@@ -190,7 +238,7 @@ export default {
     }
   }
 }
-<\/script>`;
+<\\/script>`;
         }
     },
     beforeCreate() {
